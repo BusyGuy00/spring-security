@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:security="http://www.springframework.org/schema/security"
+	xsi:schemaLocation="http://www.springframework.org/schema/security 
+	http://www.springframework.org/schema/security/spring-security.xsd
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans.xsd">
+	<!-- AccessDeniedHandler 인터페이스를 구현해 클래시를 빈으로 등록 -->
+	<bean id="customAccessDenied" class="org.green.security.CustomAccessDeniedHandler"></bean>
+	<!-- 로그인 성공시 인터페이스 구현 클래스 빈으로 등록 -->
+	<bean id="customLoginSuccess" class="org.green.security.CustomLoginSuccessHandler"></bean>
+	<!-- 암호화 빈 등록 -->
+	<bean id="bcryptPasswordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder"></bean>
+	<!-- 아이디 인증 등록? -->
+	<bean id="customUserDetailService" class="org.green.security.CustomUserDetailService" ></bean>
+	
+	<!-- 시큐리티 시작점 -->
+	<security:http>
+		<!-- 접근 제한자 설정하기 -->
+		<security:intercept-url pattern="/sample/all" access="permitAll"/>
+		<security:intercept-url pattern="/sample/member" access="hasRole('ROLE_MEMBER')"/>
+		<security:intercept-url pattern="/sample/admin" access="hasRole('ROLE_ADMIN')"/>
+		<!-- 로그인화면을 제공해 준다 --> <!-- 커스텀 로그인 페이지 -->
+		<!-- 	<security:form-login  login-page="/customLogin"/> -->
+		<security:form-login  login-page="/customLogin" authentication-success-handler-ref="customLoginSuccess"/>
+		<!-- 로그아웃 생성 --> <!-- 로그아웃 할때 remember-me JSESSION_ID 쿠키 삭제 -->
+		<security:logout logout-url="/customLogout" invalidate-session="true"
+			delete-cookies="remember-me, JSESSION_ID"/>
+		<!-- 에러 페이지 -->
+		<!-- <security:access-denied-handler error-page="/accessError" /> -->
+		<!-- 클래스 엑세스 생성 -->
+		<security:access-denied-handler ref="customAccessDenied" />
+		<!-- 자동 로그인 쿠키 설정 시간  -->
+		<security:remember-me data-source-ref="dataSource" token-validity-seconds="604800" />
+	</security:http>
+	<!-- 스프링 시큐리티 동작하기 위해 필요한 존재 -->
+	<!-- 인증 매니저 -->
+	<!--  <security:authentication-manager>-->
+	<!--  인증 제공자 (실제 인증 작업을 처리) -->
+	<!--  <security:authentication-provider>-->	
+			<!--  <security:user-service> -->
+			<!-- 아이디와 패스워드로 로그인이 가능하도록 설정 -->
+			<!-- authorities 인가 해주는 구문(input에
+			name="member" password="{noop}member" 를 하면 권한 인가)--> 
+			<!-- 시큐리티 5버전 부터는 PasswordEncoder를 강제로 이용해야 한다--> 
+			<!--{noop}은 강제로 인코딩해주는 구문 -->
+			<!--  	<security:user name="member" password="{noop}member" authorities="ROLE_MEMBER"/> -->
+																				<!-- 여러개에 권한을 줄 수 있다. -->
+			<!--<security:user name="admin" password="{noop}admin" authorities="ROLE_MEMBER,ROLE_ADMIN"/> -->
+			<!-- </security:user-service>  -->
+			<!--  </security:authentication-provider>-->
+			<!--  </security:authentication-manager>-->
+<!-- ================================================================================================================= -->	
+	<security:authentication-manager>
+	<!--  인증 제공자 (실제 인증 작업을 처리) -->
+		<security:authentication-provider user-service-ref="customUserDetailService">
+			
+			<!-- 이제 참조 받아서 사용 --> <!-- root-context.xml의 히카리를 받아서 인증 한다. 아니며ㅛㄴ JDBC를 이용하는 방법도 존재한다 -->
+			
+			<!--user-service-ref의 추가로  jdbc-user-service가 필요 없어졌다. -->
+			<!-- <security:jdbc-user-service data-source-ref="dataSource"
+			users-by-username-query="select userid, userpw, enabled from tbl_member where userid= ?"
+			authorities-by-username-query="select userid, auth from tbl_member_auth where userid = ?"
+			/> -->	
+			
+			<!-- 패스 워드 인코더  -->
+			<security:password-encoder ref="bcryptPasswordEncoder"/>
+			
+		</security:authentication-provider>
+	</security:authentication-manager>
+</beans>
